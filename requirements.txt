@@ -1,0 +1,4 @@
+discord.py[voice]
+dotenv
+lavalink
+yt_dlp
