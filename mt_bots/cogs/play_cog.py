@@ -20,7 +20,6 @@ FFMPEG_OPTIONS = {
     'options': '-vn'
 }
 
-
 class PlayCog(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
@@ -71,7 +70,7 @@ class PlayCog(commands.Cog):
         if not self._user_connected_to_vc(interaction):
             await interaction.response.send_message(
                 'You are not connected to a voice channel',
-                ephemeral=True, delete_after=10
+                ephemeral=True, delete_after=5
             )
             return
         
@@ -79,29 +78,36 @@ class PlayCog(commands.Cog):
         if not permissions.view_channel:
             await interaction.response.send_message(
                 'I do not have permission to view your voice channel',
-                ephemeral=True, delete_after=10
+                ephemeral=True, delete_after=5
             )
             return
         elif not permissions.connect:
             await interaction.response.send_message(
                 'I do not have permission to connect to your voice channel',
-                ephemeral=True, delete_after=10
+                ephemeral=True, delete_after=5
             )
             return
         elif not permissions.speak:
             await interaction.response.send_message(
                 'I do not have permission to speak in your voice channel',
-                ephemeral=True, delete_after=10
+                ephemeral=True, delete_after=5
             )
             return
         
         if self.is_playing or self.is_paused:
             media_info = self._search_yt(query)
+            if not media_info:
+                await interaction.response.send_message(
+                    'No media found for that query',
+                    ephemeral=True, delete_after=5
+                )
+                return
             media_info = self._extract_fields_from_media_info(media_info)
             self.queue.append(media_info)
             await self._update_player_embed()
+            title = media_info['title']
             await interaction.response.send_message(
-                f'Added {media_info["title"]} to the queue',
+                f'Added {title} to the queue',
                 ephemeral=True, delete_after=5
             )
             return
@@ -109,6 +115,12 @@ class PlayCog(commands.Cog):
         await interaction.response.defer(thinking=True)
         
         media_info = self._search_yt(query)
+        if not media_info:
+            await interaction.followup.send(
+                'No media found for that query',
+                ephemeral=True, delete_after=5
+            )
+            return
         media_info = self._extract_fields_from_media_info(media_info)
         
         self.vc = await interaction.user.voice.channel.connect()
@@ -192,7 +204,7 @@ class PlayCog(commands.Cog):
         if self.current_media:
             embed.add_field(
                 name='🔊 Now Playing',
-                value=f'{self.current_media['title']}',
+                value=self.current_media['title'],
                 inline=False
             )
             embed.set_thumbnail(url=self.current_media['thumbnail'])
@@ -206,7 +218,8 @@ class PlayCog(commands.Cog):
         if len(self.queue) > 0:
             queue_text = ''
             for i, media in enumerate(self.queue[:5]):
-                queue_text += f'**{i + 1}.** {media['title']}\n'
+                title = media['title']
+                queue_text += f'**{i + 1}.** {title}\n'
                 
             if len(self.queue) > 5:
                 queue_text += f'...and {len(self.queue) - 5} more'
