@@ -94,7 +94,7 @@ class PlayCog(commands.Cog):
             )
             return
         
-        await interaction.response.defer(thinking=True, ephemeral=True)
+        await interaction.response.defer(thinking=True)
         
         media_info = self._search_yt(query)
         if not media_info:
@@ -111,10 +111,7 @@ class PlayCog(commands.Cog):
             await self._update_player_embed()
             
             title = media_info['title']
-            message = await interaction.followup.send(
-                f'Added {title} to the queue',
-                delete_after=5
-            )
+            message = await interaction.followup.send(f'Added {title} to the queue')
             try:
                 await message.delete(delay=5)
             except discord.NotFound:
@@ -135,6 +132,13 @@ class PlayCog(commands.Cog):
         self._play_next()
             
     def _search_yt(self, query: str) -> Optional[dict]:
+        query = query.strip()
+        if query.startswith(('http://', 'https://', 'www.')) \
+            and 'youtube.com/watch?v=' in query:
+            query = query.split('&')[0]
+        elif query.startswith('youtu.be/'):
+            query = query.split('&')[0]
+        
         with YoutubeDL(YDL_OPTIONS) as ydl:
             try:
                 info = ydl.extract_info(f'ytsearch:{query}', download=False)
