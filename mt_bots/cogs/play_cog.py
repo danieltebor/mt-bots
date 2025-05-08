@@ -94,38 +94,37 @@ class PlayCog(commands.Cog):
             )
             return
         
-        if self.is_playing or self.is_paused:
-            media_info = self._search_yt(query)
-            if not media_info:
-                await interaction.response.send_message(
-                    'No media found for that query',
-                    ephemeral=True, delete_after=5
-                )
-                return
-            media_info = self._extract_fields_from_media_info(media_info)
-            self.queue.append(media_info)
-            await self._update_player_embed()
-            title = media_info['title']
-            await interaction.response.send_message(
-                f'Added {title} to the queue',
-                ephemeral=True, delete_after=5
-            )
-            return
-        
-        await interaction.response.defer(thinking=True)
+        await interaction.response.defer(thinking=True, ephemeral=True)
         
         media_info = self._search_yt(query)
         if not media_info:
-            await interaction.followup.send(
-                'No media found for that query',
-                ephemeral=True, delete_after=5
-            )
+            message = await interaction.followup.send('No media found for that query')
+            try:
+                await message.delete(delay=5)
+            except discord.NotFound:
+                pass
             return
         media_info = self._extract_fields_from_media_info(media_info)
+        
+        if self.is_playing or self.is_paused:
+            self.queue.append(media_info)
+            await self._update_player_embed()
+            
+            title = media_info['title']
+            message = await interaction.followup.send(
+                f'Added {title} to the queue',
+                delete_after=5
+            )
+            try:
+                await message.delete(delay=5)
+            except discord.NotFound:
+                pass
+            return
         
         self.vc = await interaction.user.voice.channel.connect()
         self.current_media = media_info # Set for initial embed.
         self.is_playing = True
+        
         embed = self._create_player_embed()
         self.player_message = await interaction.followup.send(
             embed=embed,
